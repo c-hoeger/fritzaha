@@ -1,0 +1,71 @@
+#!/usr/bin/env ruby
+
+require 'fritzaha'
+require 'optparse'
+
+def usage
+  usage=<<EOF
+$ export FRITZPASSWORD=<yoursecret>
+
+  List available switch device AINs:
+$ #{$0} -l fblogin -u https://fritz.box --list
+
+  Execute given command:
+$ #{$0} -l fblogin -u https://fritz.box -c getswitchname -a <ain>
+
+See https://avm.de/fileadmin/user_upload/Global/Service/Schnittstellen/AHA-HTTP-Interface.pdf
+for a list of commands
+
+Default url = https://fritz.box can be omitted
+
+Fritzbox session id will be stored in #{$sidtmp}
+EOF
+  puts usage
+end
+
+$sidtmp = '/tmp/fritzboxclt.sid'
+
+fbpasswd = ENV['FRITZPASSWORD'] 
+
+raise "FRITZPASSWORD env variable not set" if nil == fbpasswd
+
+ain = cmd = fblogin = nil
+fburl = 'https://fritz.box'
+list  = false
+OptionParser.new do |opts|
+  opts.on("-lLOGIN", "--login=LOGIN", "Fritzbox Login") do |l|
+    fblogin = l
+  end
+  opts.on("-uURL", "--url=URL", "Fritzbox URL") do |u|
+    fburl = u
+  end
+  opts.on("-cCMD", "--cmd=CMD", "Fritzbox command") do |c|
+    cmd = c
+  end
+  opts.on("-aAIN", "--ain=AIN", "Device AIN") do |a|
+    ain = a
+  end
+  opts.on("--list", "List AINs") do
+    list = true
+  end
+  opts.on("-h", "--help", "usage") do
+    usage
+    exit
+  end
+end.parse!
+
+if nil == fblogin || nil == fburl
+  usage
+  exit
+end
+
+fb = FritzAHA.new(fblogin, fbpasswd, fburl, $sidtmp)
+fb.login
+
+if list
+  puts fb.list
+else
+  usage if nil == cmd
+  exit
+  puts fb.cmd(cmd, ain)
+end
