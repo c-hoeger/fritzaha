@@ -32,6 +32,8 @@ raise "FRITZPASSWORD env variable not set" if nil == fbpasswd
 ain = cmd = fblogin = nil
 fburl = 'https://fritz.box'
 list  = false
+xml   = false
+debug = false
 OptionParser.new do |opts|
   opts.on("-lLOGIN", "--login=LOGIN", "Fritzbox Login") do |l|
     fblogin = l
@@ -48,6 +50,12 @@ OptionParser.new do |opts|
   opts.on("--list", "List AINs") do
     list = true
   end
+  opts.on("-x", "--xml", "Format XML output") do
+    xml = true
+  end
+  opts.on("-d", "--debug", "Debug mode") do
+    debug = true
+  end
   opts.on("-h", "--help", "usage") do
     usage
     exit
@@ -60,12 +68,24 @@ if nil == fblogin || nil == fburl
 end
 
 fb = FritzAHA.new(fblogin, fbpasswd, fburl, $sidtmp)
+fb.debug(debug)
 fb.login
 
+res = nil
 if list
-  puts fb.list
+  res = fb.list
 else
-  usage if nil == cmd
-  exit
-  puts fb.cmd(cmd, ain)
+  if nil == cmd
+    usage
+    exit
+  end
+  res = fb.cmd(cmd, ain)
+end
+
+if xml
+  fm = REXML::Formatters::Pretty.new
+  fm.compact = true
+  puts fm.write(Document.new(res).root, '')
+else
+  puts res
 end
