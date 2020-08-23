@@ -1,0 +1,60 @@
+#!/usr/bin/ruby
+
+require 'fritzaha'
+
+
+if $0.end_with?('dect200power')
+  category='dect200power'
+elsif $0.end_with?('fritzdsl')
+  category='fritzdsl'
+else
+  category='dect200temp'
+end
+
+ if ARGV.length > 0
+   if ARGV[0] == 'config'
+      if $0.end_with?('dect200power')
+        category='dect200power'
+        puts <<EOFP
+graph_title FritzDECT 200 Kitchen power
+graph_vlabel Watts
+graph_category #{category}
+#{category}.label energy
+EOFP
+      elsif $0.end_with?('fritzdsl')
+        category='fritzdsl'
+        puts <<EOFTP
+graph_title Fritzbox DSL throughput
+graph_vlabel MB
+graph_category #{category}
+received.label received
+sent.label sent
+EOFTP
+      else
+        category='dect200temp'
+        puts <<EOFT
+graph_title FritzDECT 200 Kitchen temperatures
+graph_vlabel Celsius
+graph_category #{category}
+#{category}.label temperature
+EOFT
+      end
+   end
+   exit 0
+end
+
+cmd = $0.end_with?('dect200power') ? 'getswitchpower' : 'gettemperature'
+
+fb = FritzAHA.new('fblogin','fbpassword','https://fritz.box','/tmp/fritzbox.sid')
+fb.login
+
+if $0.end_with?('fritzdsl')
+  val = fb.throughput
+  puts "received.value #{val['received']}"
+  puts "sent.value #{val['sent']}"
+else
+  val = fb.cmd(cmd, 'dect200ain')
+  val = $0.end_with?('dect200power') ? val.to_f/1000 : val.to_f/10
+
+  puts "#{category}.value #{val}"
+end
