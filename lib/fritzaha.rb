@@ -2,6 +2,7 @@ require 'net/http'
 require 'openssl'
 require 'digest'
 require 'json'
+require 'nokogiri'
 require 'rexml/document'
 include REXML
 
@@ -34,21 +35,10 @@ class FritzAHA
   end
 
   def list
-    _cmd('getswitchlist', nil)
+    cmd('getswitchlist', nil)
   end
 
-  def cmd(cmd, ain)
-    _cmd(cmd, ain)
-  end
-
-  private
-
-  def _debug_response(func, response)
-    STDERR.puts "#{func} - #{response.code}" if @debug
-    STDERR.puts "#{func} - #{response.msg}" if @debug
-  end
-
-  def _cmd(cmd,ain)
+  def cmd(cmd,ain)
     if nil == @sid
        raise "no session, forgot to execute login?"
     end
@@ -61,16 +51,64 @@ class FritzAHA
       request = Net::HTTP::Get.new uri
       response = http.request request
       if response.code != "200"
-         _debug_response('_cmd', response)
+         _debug_response('cmd', response)
          if response.code == "403"
            _login
-           return _cmd(cmd, ain)
+           return cmd(cmd, ain)
          else
            return [ response.code, response.msg ]
          end
       end
       return response.body
-    end    
+    end
+  end
+
+  def syslog
+    JSON.pretty_generate(JSON.parse((_fb_post('data.lua', { 'page' => 'log', 'filter' => '0' })))['data']['log'])
+  end
+
+  def throughput
+    # FIXME: language...
+    data = Nokogiri::HTML.parse(_fb_post('data.lua', { 'page' => 'netCnt' }))
+    received_mb = data.xpath("//td[@datalabel='Datenvolumen empfangen(MB)']/text()")[0].to_s
+    sent_mb = data.xpath("//td[@datalabel='Datenvolumen gesendet(MB)']/text()")[0].to_s
+    return {'received' => received_mb, 'sent' => sent_mb}
+  end
+
+  private
+
+  def _debug_response(func, response)
+    STDERR.puts "#{func} - #{response.code}" if @debug
+    STDERR.puts "#{func} - #{response.msg}" if @debug
+  end
+
+  def _fb_post(script, postparams)
+    if nil == @sid
+       raise "no session, forgot to execute login?"
+    end
+
+    if !postparams.is_a?(Hash)
+      raise "invalid _fb_post parameter"
+    end
+    postparams['sid'] = @sid
+
+    uri = URI("#{@fburl}/#{script}")
+
+    Net::HTTP.start(uri.host, uri.port, :use_ssl => true, :verify_mode => OpenSSL::SSL::VERIFY_NONE) do |http|
+      request = Net::HTTP::Post.new uri
+      request.set_form_data(postparams)
+      response = http.request request
+      if response.code != "200"
+         _debug_response('_fb_post', response)
+         if response.code == "403"
+           _login
+           return _fb_post(script, postparams)
+         else
+           return [ response.code, response.msg ]
+         end
+      end
+      response.body
+    end
   end
 
   def _login

@@ -7,6 +7,9 @@ def usage
   usage=<<EOF
 $ export FRITZPASSWORD=<yoursecret>
 
+or use -O to use macOS keychain; hostname of fritzbox url will be used to find the
+password in that case
+
   List available switch device AINs:
 $ #{$0} -l fblogin -u https://fritz.box --list
 
@@ -25,15 +28,14 @@ end
 
 $sidtmp = '/tmp/fritzboxclt.sid'
 
-fbpasswd = ENV['FRITZPASSWORD'] 
-
-raise "FRITZPASSWORD env variable not set" if nil == fbpasswd
 
 ain = cmd = fblogin = nil
 fburl = 'https://fritz.box'
 list  = false
 xml   = false
 debug = false
+keychain = false
+syslog = false
 OptionParser.new do |opts|
   opts.on("-lLOGIN", "--login=LOGIN", "Fritzbox Login") do |l|
     fblogin = l
@@ -50,8 +52,14 @@ OptionParser.new do |opts|
   opts.on("--list", "List AINs") do
     list = true
   end
+  opts.on("-O", "--macos-keychain", "Use macOS keychain") do
+    keychain = true
+  end
   opts.on("-x", "--xml", "Format XML output") do
     xml = true
+  end
+  opts.on("-S", "--syslog", "System log") do
+    syslog = true
   end
   opts.on("-d", "--debug", "Debug mode") do
     debug = true
@@ -62,6 +70,14 @@ OptionParser.new do |opts|
   end
 end.parse!
 
+fbpasswd = ENV['FRITZPASSWORD']
+
+if keychain
+  fbpasswd = `security find-internet-password -s #{URI(fburl).host} -w`.chomp
+else
+  raise "FRITZPASSWORD env variable not set" if nil == fbpasswd
+end
+
 if nil == fblogin || nil == fburl
   usage
   exit
@@ -70,6 +86,11 @@ end
 fb = FritzAHA.new(fblogin, fbpasswd, fburl, $sidtmp)
 fb.debug(debug)
 fb.login
+
+if syslog
+  puts fb.syslog
+  exit
+end
 
 res = nil
 if list
