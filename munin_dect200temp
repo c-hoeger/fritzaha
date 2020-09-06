@@ -14,6 +14,7 @@ end
  if ARGV.length > 0
    if ARGV[0] == 'config'
       if $0.end_with?('dect200power')
+        category='dect200power'
         puts <<EOFP
 graph_title FritzDECT 200 Kitchen power
 graph_vlabel Watts
@@ -21,6 +22,7 @@ graph_category #{category}
 #{category}.label energy
 EOFP
       elsif $0.end_with?('fritzdsl')
+        category='fritzdsl'
         puts <<EOFTP
 graph_title Fritzbox DSL throughput
 graph_vlabel MB
@@ -31,6 +33,7 @@ received_month.label received / month
 sent_month.label sent / month
 EOFTP
       else
+        category='dect200temp'
         puts <<EOFT
 graph_title FritzDECT 200 Kitchen temperatures
 graph_vlabel Celsius
