@@ -70,9 +70,14 @@ class FritzAHA
   def throughput
     # FIXME: language...
     data = Nokogiri::HTML.parse(_fb_post('data.lua', { 'page' => 'netCnt' }))
-    received_mb = data.xpath("//td[@datalabel='Datenvolumen empfangen(MB)']/text()")[0].to_s
-    sent_mb = data.xpath("//td[@datalabel='Datenvolumen gesendet(MB)']/text()")[0].to_s
-    return {'received' => received_mb, 'sent' => sent_mb}
+    vol_received_array = data.xpath("//td[@datalabel='Datenvolumen empfangen(MB)']/text()")
+    vol_sent_array = data.xpath("//td[@datalabel='Datenvolumen gesendet(MB)']/text()")
+    received_day_mb = vol_received_array[0].to_s
+    sent_day_mb = vol_sent_array[0].to_s
+    received_month_mb = vol_received_array[2].to_s
+    sent_month_mb = vol_sent_array[2].to_s
+    return {'received_day' => received_day_mb, 'sent_day' => sent_day_mb,
+            'received_month' => received_month_mb, 'sent_month' => sent_month_mb}
   end
 
   private
