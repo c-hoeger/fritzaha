@@ -67,15 +67,18 @@ class FritzAHA
     JSON.pretty_generate(JSON.parse((_fb_post('data.lua', { 'page' => 'log', 'filter' => '0' })))['data']['log'])
   end
 
+  def toMb(val)
+    (val.to_i/(1024*1024)).to_s
+  end
+
   def throughput
-    # FIXME: language...
-    data = Nokogiri::HTML.parse(_fb_post('data.lua', { 'page' => 'netCnt' }))
-    vol_received_array = data.xpath("//td[@datalabel='Datenvolumen empfangen(MB)']/text()")
-    vol_sent_array = data.xpath("//td[@datalabel='Datenvolumen gesendet(MB)']/text()")
-    received_day_mb = vol_received_array[0].to_s
-    sent_day_mb = vol_sent_array[0].to_s
-    received_month_mb = vol_received_array[2].to_s
-    sent_month_mb = vol_sent_array[2].to_s
+    pdata = _fb_post('data.lua', { 'page' => 'netCnt' })
+    m = pdata.match /const data =.*?({.*}})?;/m
+    jdata = JSON.parse(m[1].gsub(/\\/,''))
+    received_day_mb = toMb(jdata['Today']['BytesReceivedLow'])
+    sent_day_mb = toMb(jdata['Today']['BytesSentLow'])
+    received_month_mb = toMb(jdata['ThisMonth']['BytesReceivedLow'])
+    sent_month_mb = toMb(jdata['ThisMonth']['BytesSentLow'])
     return {'received_day' => received_day_mb, 'sent_day' => sent_day_mb,
             'received_month' => received_month_mb, 'sent_month' => sent_month_mb}
   end
